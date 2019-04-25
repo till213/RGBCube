@@ -168,79 +168,7 @@ def sRGB2linear(rgb):
     lrgb.y = s2lin(rgb.y)
     lrgb.z = s2lin(rgb.z)
     return lrgb
-
-def createScene():
-    scene = bpy.context.scene
-    scene.frame_set(0)
-    
-    # r/g/0 face ("bottom")
-    b = 0
-    for r in range(0, 256, STEP):
-        for g in range(0, 256, STEP):
-            rgb = Vector((r, g, b))
-            createPoint(rgb)
-    # r/g/255 face ("top")
-    b = 255
-    for r in range(0, 256, STEP):
-        for g in range(0, 256, STEP):
-            rgb = Vector((r, g, b))
-            createPoint(rgb)
-    # r/0/b face ("Front")
-    g = 0
-    for r in range(0, 256, STEP):
-        for b in range(0, 256, STEP):
-            rgb = Vector((r, g, b))
-            createPoint(rgb)
-    # r/0/b face ("Back")
-    g = 255
-    for r in range(0, 256, STEP):
-        for b in range(0, 256, STEP):
-            rgb = Vector((r, g, b))
-            createPoint(rgb)
-    # 0/g/b face ("Left")
-    r = 0
-    for g in range(0, 256, STEP):
-        if g > 0 and g < 255:
-            for b in range(0, 256, STEP):
-                if b > 0 and b < 255:
-                    rgb = Vector((r, g, b))
-                    createPoint(rgb)
-    # 0/g/b face ("Right")
-    r = 255
-    for g in range(0, 256, STEP):
-        if g > 0 and g < 255:
-            for b in range(0, 256, STEP):
-                if b > 0 and b < 255:
-                    rgb = Vector((r, g, b))
-                    createPoint(rgb)
-    
-    #  Store initial locations                
-    for obj in bpy.context.selected_objects:
-        obj.keyframe_insert(data_path='location', index=-1)
-                    
-    # Create RGB Cube "handle" ("Empty" object) - center of RGB cube
-    loc = normRGB2ModelSpace(Vector((0.5, 0.5, 0.5))) 
-    bpy.ops.object.empty_add(type='ARROWS', view_align=False, location=loc)
-    # Creating a new object via "operations" makes the newly created object the selected one
-    # cube = scene.objects.active
-    cube = bpy.context.object
-    cube.name = CUBE_NAME
-    
-    # Create parent-child relationship - make sure the "handle" is de-selected first
-    cube.select_set(False)
-    
-    # Then select all RGB spheres first...
-    for obj in bpy.context.scene.objects:
-        obj.select_set(obj.name.startswith(SPHERE_NAME))
-        
-    # ... then the "handle" (parent) again (last)
-    cube.select_set(True)
-    
-    bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
-            
-    # Update objects in scene        
-    scene.update()
-                
+          
 def clearScene():
     global sphere
     
@@ -309,14 +237,87 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     bl_description = "Add RGB Cube"
     
-    #total = bpy.props.IntProperty(name="Steps", default=2, min=1, max=100)
+    steps: bpy.props.IntProperty(name="mysteps", default=20, min=1, max=100)
     
     def execute(self, context):
         initProperties()
         clearScene()
-        createScene()
+        self.createScene()
         animate() 
         return {'FINISHED'}
+    
+    def createScene(self):
+        scene = bpy.context.scene
+        scene.frame_set(0)
+        
+        # r/g/0 face ("bottom")
+        b = 0
+        steps = self.steps
+        for r in range(0, 256, steps):
+            for g in range(0, 256, steps):
+                rgb = Vector((r, g, b))
+                createPoint(rgb)
+        # r/g/255 face ("top")
+        b = 255
+        for r in range(0, 256, steps):
+            for g in range(0, 256, steps):
+                rgb = Vector((r, g, b))
+                createPoint(rgb)
+        # r/0/b face ("Front")
+        g = 0
+        for r in range(0, 256, steps):
+            for b in range(0, 256, steps):
+                rgb = Vector((r, g, b))
+                createPoint(rgb)
+        # r/0/b face ("Back")
+        g = 255
+        for r in range(0, 256, steps):
+            for b in range(0, 256, steps):
+                rgb = Vector((r, g, b))
+                createPoint(rgb)
+        # 0/g/b face ("Left")
+        r = 0
+        for g in range(0, 256, steps):
+            if g > 0 and g < 255:
+                for b in range(0, 256, steps):
+                    if b > 0 and b < 255:
+                        rgb = Vector((r, g, b))
+                        createPoint(rgb)
+        # 0/g/b face ("Right")
+        r = 255
+        for g in range(0, 256, steps):
+            if g > 0 and g < 255:
+                for b in range(0, 256, steps):
+                    if b > 0 and b < 255:
+                        rgb = Vector((r, g, b))
+                        createPoint(rgb)
+        
+        #  Store initial locations                
+        for obj in bpy.context.selected_objects:
+            obj.keyframe_insert(data_path='location', index=-1)
+                        
+        # Create RGB Cube "handle" ("Empty" object) - center of RGB cube
+        loc = normRGB2ModelSpace(Vector((0.5, 0.5, 0.5))) 
+        bpy.ops.object.empty_add(type='ARROWS', view_align=False, location=loc)
+        # Creating a new object via "operations" makes the newly created object the selected one
+        # cube = scene.objects.active
+        cube = bpy.context.object
+        cube.name = CUBE_NAME
+        
+        # Create parent-child relationship - make sure the "handle" is de-selected first
+        cube.select_set(False)
+        
+        # Then select all RGB spheres first...
+        for obj in bpy.context.scene.objects:
+            obj.select_set(obj.name.startswith(SPHERE_NAME))
+            
+        # ... then the "handle" (parent) again (last)
+        cube.select_set(True)
+        
+        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+                
+        # Update objects in scene        
+        scene.update()
     
 def menu_func_rgb_cube(self, context):
     self.layout.operator(
