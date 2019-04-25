@@ -16,3 +16,9 @@ Blender addon which creates an RGB cube which transforms into an L*a*b* colour s
 * Make it a proper addon, such that it can be invoced via mesh generator menu
 * Use node-based materials
 * Make variable properties
+
+## Example
+
+The following animation snippet was done using Blender and its camera tracking feature.
+
+![RGB cube animation](img/rgb_cube_animation.gif)
