@@ -1,3 +1,14 @@
+bl_info = {
+    "name": "RGB Cube",
+    "author": "Oliver Knoll",
+    "version": (0, 1),
+    "blender": (2, 80, 0),
+    "location": "View3D > Add > RGB Cube",
+    "description": "Adds an RGB cube which is transformed to an L*a*b* colour space.",
+    "wiki_url": "",
+    "category": "Add Mesh"
+}
+
 import bpy
 from mathutils import Vector
 from mathutils import Matrix
@@ -231,9 +242,12 @@ def createScene():
     scene.update()
                 
 def clearScene():
+    global sphere
+    
     for obj in bpy.context.scene.objects:
         obj.select_set(obj.name.startswith(SPHERE_NAME) or obj.name.startswith(CUBE_NAME))
     bpy.ops.object.delete()
+    sphere = None
     
 def animate():
     scene = bpy.context.scene    
@@ -287,12 +301,39 @@ def setNormRGBProperty(self, value):
         
 def initProperties():
     bpy.types.Object.normRGB = bpy.props.FloatVectorProperty(name="Normalised RGB", description="Original normalised RGB value in range [0.0, 1.0]", subtype="XYZ", size=3, get=getNormRGBProperty, set=setNormRGBProperty)
-                
+
+class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
+    """Object RGB Cube"""
+    bl_idname = "mesh.add_rgb_cube"
+    bl_label = "Add RGB Cube"
+    bl_options = {'REGISTER', 'UNDO'}
+    bl_description = "Add RGB Cube"
+    
+    #total = bpy.props.IntProperty(name="Steps", default=2, min=1, max=100)
+    
+    def execute(self, context):
+        initProperties()
+        clearScene()
+        createScene()
+        animate() 
+        return {'FINISHED'}
+    
+def menu_func_rgb_cube(self, context):
+    self.layout.operator(
+        OBJECT_OT_add_rgb_cube.bl_idname,
+        text="RGB Cube",
+        icon="CUBE")
+
+def register():
+    bpy.utils.register_class(OBJECT_OT_add_rgb_cube)
+    bpy.types.VIEW3D_MT_mesh_add.append(menu_func_rgb_cube)
+
+def unregister():
+    bpy.utils.unregister_class(OBJECT_OT_add_rgb_cube)
+    bpy.types.VIEW3D_MT_mesh_add.remove(menu_func_rgb_cube)
+
 if __name__ == "__main__":
-    initProperties()
-    clearScene()
-    createScene()
-    animate()
+    register()
     
         
         
