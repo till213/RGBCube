@@ -50,7 +50,7 @@ def initSphere():
 def makeMaterial(name, diffuse, specular, alpha):
     # TODO Convert to Nodes based material
     mat = bpy.data.materials.new(name)
-    mat.diffuse_color = diffuse
+    mat.diffuse_color = Vector((diffuse.x, diffuse.y, diffuse.z, 1))
     # mat.diffuse_shader = 'LAMBERT' 
     # mat.diffuse_intensity = 1.0 
     mat.specular_color = specular
