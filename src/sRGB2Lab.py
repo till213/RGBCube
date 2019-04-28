@@ -17,8 +17,6 @@ import math
 
 # Constants
 DELTA = 10E-03
-STEP   = 15 # 15 is a good value
-RADIUS = 1.0 / (256 / STEP) / 4.0
 SPHERE_NAME = "RGB_SPHERE"
 CUBE_NAME = "RGB_CUBE" 
 
