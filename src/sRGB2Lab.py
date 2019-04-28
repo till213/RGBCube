@@ -54,10 +54,10 @@ K = 903.3
 # Template sphere
 sphere = None
 
-def initSphere():
+def initSphere(radius):
     global sphere
     bpy.ops.object.select_all(action='DESELECT')
-    bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=RADIUS)
+    bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=radius)
     sphere = bpy.context.object
     sphere.name = SPHERE_NAME
     
@@ -129,24 +129,6 @@ def rgb2Lab(rgb):
     xyz = linRGB2XYZ(rgb)
     lab = xyz2Lab(xyz)
     return lab
-    
-def createPoint(rgb):
-    global sphere
-    obj = None
-    
-    if sphere == None:
-        initSphere()
-        obj = sphere
-    else:
-        obj = sphere.copy()
-        # We also need to copy the vertex data, in order to
-        # apply different materials later on
-        obj.data = sphere.data.copy()
-        bpy.context.scene.collection.objects.link(obj)
-    obj.location = rgb2ModelSpace(rgb)    
-    mat = makeMaterial('Mat', rgb, (1, 1, 1), 1)
-    setMaterial(obj, mat)
-    obj.normRGB = rgb
     
 def s2lin(s):
     a = 0.055
@@ -236,6 +218,7 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     bl_description = "Add RGB Cube"
     
+    radius: float
     elements: bpy.props.IntProperty(name="Elements", default=8, min=2, max=256)
     
     def execute(self, context):
@@ -245,36 +228,54 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
         animate() 
         return {'FINISHED'}
     
+    def createPoint(self, rgb):
+        global sphere
+        obj = None
+        
+        if sphere == None:
+            initSphere(self.radius)
+            obj = sphere
+        else:
+            obj = sphere.copy()
+            # We also need to copy the vertex data, in order to
+            # apply different materials later on
+            obj.data = sphere.data.copy()
+            bpy.context.scene.collection.objects.link(obj)
+        obj.location = rgb2ModelSpace(rgb)    
+        mat = makeMaterial('Mat', rgb, (1, 1, 1), 1)
+        setMaterial(obj, mat)
+        obj.normRGB = rgb
+    
     def createScene(self):
         scene = bpy.context.scene
         scene.frame_set(0)
         
         step = 1 / (self.elements - 1)
-        print(step)
+        self.radius = step / 2
         
         # r/g/x face ("bottom" and "top")
         for r in numpy.arange(0, 1 + DELTA, step):
             for g in numpy.arange(0, 1 + DELTA, step):
                 rgb = Vector((r, g, 0))
-                createPoint(rgb)
+                self.createPoint(rgb)
                 rgb = Vector((r, g, 1))
-                createPoint(rgb)
+                self.createPoint(rgb)
         
         # r/x/b face ("front" and "back")
         for r in numpy.arange(0, 1 + DELTA, step):
             for b in numpy.arange(step, 1 - DELTA, step):
                 rgb = Vector((r, 0, b))
-                createPoint(rgb)
+                self.createPoint(rgb)
                 rgb = Vector((r, 1, b))
-                createPoint(rgb)
+                self.createPoint(rgb)
         
         # x/g/b face ("left" and "right")                 
         for g in numpy.arange(step, 1 - DELTA, step):
             for b in numpy.arange(step, 1 - DELTA, step):
                 rgb = Vector((0, g, b))
-                createPoint(rgb)
+                self.createPoint(rgb)
                 rgb = Vector((1, g, b))
-                createPoint(rgb)
+                self.createPoint(rgb)
         
         #  Store initial locations                
         for obj in bpy.context.selected_objects:
