@@ -31,6 +31,7 @@ ANIM_KEY_END = DURATION
 
 # Derived Animation Constants
 ANIM_TOTAL_FRAMES = ANIM_KEY_END * FPS
+ANIM_KEY_0_FRAME = 0
 ANIM_KEY_1_FRAME = ANIM_KEY_1 * FPS
 ANIM_KEY_2_FRAME = ANIM_KEY_2 * FPS
 ANIM_KEY_3_FRAME = ANIM_KEY_3 * FPS
@@ -145,12 +146,14 @@ def createPoint(rgb):
         obj = sphere
     else:
         obj = sphere.copy()
+        # We also need to copy the vertex data, in order to
+        # apply different materials later on
         obj.data = sphere.data.copy()
         bpy.context.scene.collection.objects.link(obj)
     obj.location = rgb2ModelSpace(rgb)    
     mat = makeMaterial('Mat', rgb / 255, (1, 1, 1), 1)
     setMaterial(obj, mat)
-    obj.normRGB=rgb2NormRGB(rgb)
+    obj.normRGB = rgb2NormRGB(rgb)
     
 def s2lin(s):
     a = 0.055
@@ -221,6 +224,9 @@ def animate():
         obj.location = lab2ModelSpace(rgb2Lab(linRGB))
         obj.keyframe_insert(data_path='location', index=-1)
         
+    # Reset to frame 1
+    scene.frame_set(ANIM_KEY_0_FRAME)
+        
 def getNormRGBProperty(self):
     return self["normRGB"]
 
@@ -237,7 +243,7 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
     bl_description = "Add RGB Cube"
     
-    steps: bpy.props.IntProperty(name="mysteps", default=20, min=1, max=100)
+    elements: bpy.props.IntProperty(name="Elements", default=8, min=2, max=256)
     
     def execute(self, context):
         initProperties()
@@ -250,46 +256,32 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
         scene = bpy.context.scene
         scene.frame_set(0)
         
-        # r/g/0 face ("bottom")
-        b = 0
-        steps = self.steps
+        steps = int(255 / (self.elements - 1))
+        
+        # r/g/x face ("bottom" and "top")
         for r in range(0, 256, steps):
             for g in range(0, 256, steps):
-                rgb = Vector((r, g, b))
+                rgb = Vector((r, g, 0))
                 createPoint(rgb)
-        # r/g/255 face ("top")
-        b = 255
-        for r in range(0, 256, steps):
-            for g in range(0, 256, steps):
-                rgb = Vector((r, g, b))
+                rgb = Vector((r, g, 255))
                 createPoint(rgb)
-        # r/0/b face ("Front")
-        g = 0
+        
+        # r/x/b face ("front" and "back")
         for r in range(0, 256, steps):
             for b in range(0, 256, steps):
-                rgb = Vector((r, g, b))
+                rgb = Vector((r, 0, b))
                 createPoint(rgb)
-        # r/0/b face ("Back")
-        g = 255
-        for r in range(0, 256, steps):
-            for b in range(0, 256, steps):
-                rgb = Vector((r, g, b))
+                rgb = Vector((r, 255, b))
                 createPoint(rgb)
-        # 0/g/b face ("Left")
-        r = 0
+        
+        # x/g/b face ("left" and "right")
         for g in range(0, 256, steps):
             if g > 0 and g < 255:
                 for b in range(0, 256, steps):
                     if b > 0 and b < 255:
-                        rgb = Vector((r, g, b))
+                        rgb = Vector((0, g, b))
                         createPoint(rgb)
-        # 0/g/b face ("Right")
-        r = 255
-        for g in range(0, 256, steps):
-            if g > 0 and g < 255:
-                for b in range(0, 256, steps):
-                    if b > 0 and b < 255:
-                        rgb = Vector((r, g, b))
+                        rgb = Vector((255, g, b))
                         createPoint(rgb)
         
         #  Store initial locations                
