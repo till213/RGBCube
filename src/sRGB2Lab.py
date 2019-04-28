@@ -167,7 +167,7 @@ def animate():
         obj.select_set(obj.name.startswith(SPHERE_NAME))
     
     # linear RGB
-    scene.frame_set(ANIM_KEY_1_FRAME)        
+    scene.frame_set(ANIM_KEY_1_FRAME)
     for obj in bpy.context.selected_objects:
         sRGB = obj.normRGB
         linRGB = sRGB2linear(sRGB)
@@ -175,7 +175,7 @@ def animate():
         obj.keyframe_insert(data_path='location', index=-1)
 
     # XYZ        
-    scene.frame_set(ANIM_KEY_2_FRAME)        
+    scene.frame_set(ANIM_KEY_2_FRAME)
     for obj in bpy.context.selected_objects:
         sRGB = obj.normRGB
         linRGB = sRGB2linear(sRGB)
@@ -183,7 +183,7 @@ def animate():
         obj.keyframe_insert(data_path='location', index=-1)
         
     # xyY        
-    scene.frame_set(ANIM_KEY_3_FRAME)        
+    scene.frame_set(ANIM_KEY_3_FRAME)
     for obj in bpy.context.selected_objects:
         sRGB = obj.normRGB
         linRGB = sRGB2linear(sRGB)
@@ -192,7 +192,7 @@ def animate():
         obj.keyframe_insert(data_path='location', index=-1)
         
     # L*a*b*, D65    
-    scene.frame_set(ANIM_KEY_4_FRAME)        
+    scene.frame_set(ANIM_KEY_4_FRAME)
     for obj in bpy.context.selected_objects:
         sRGB = obj.normRGB
         linRGB = sRGB2linear(sRGB)
@@ -276,8 +276,12 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
                 self.createPoint(rgb)
                 rgb = Vector((1, g, b))
                 self.createPoint(rgb)
+                
+        for obj in bpy.context.scene.objects:
+            obj.select_set(obj.name.startswith(SPHERE_NAME))
         
-        #  Store initial locations                
+        #  Store initial locations  
+        scene.frame_set(ANIM_KEY_0_FRAME)              
         for obj in bpy.context.selected_objects:
             obj.keyframe_insert(data_path='location', index=-1)
                         
