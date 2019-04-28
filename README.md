@@ -1,5 +1,5 @@
 # RGBCube
-Blender addon which creates an RGB cube which transforms into an L*a*b* colour space.
+Blender addon which creates an RGB cube which transforms into an L\*a\*b* colour space.
 
 ![L*a*b* colour space](img/lab_colour_space.png)
 
