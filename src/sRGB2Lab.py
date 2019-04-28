@@ -10,11 +10,13 @@ bl_info = {
 }
 
 import bpy
+import numpy
 from mathutils import Vector
 from mathutils import Matrix
 import math
 
 # Constants
+DELTA = 10E-03
 STEP   = 15 # 15 is a good value
 RADIUS = 1.0 / (256 / STEP) / 4.0
 SPHERE_NAME = "RGB_SPHERE"
@@ -79,19 +81,10 @@ def setMaterial(ob, mat):
         me.materials.pop() 
     me.materials.append(mat)
     
-def rgb2NormRGB(rgb):
-    '''Converts the RGB Vector [0, 255] to normalised RGB [0.0, 1.0] '''
-    n = rgb / 255.0
-    return n;
-
-def normRGB2ModelSpace(rgb):
-    '''Converts the normalised RGB Vector [0, 1.0] to Model space [0.0, 1.0]'''
-    return rgb
 
 def rgb2ModelSpace(rgb):
-    '''Converts the RGB Vector [0, 255] to Model space [0.0, 1.0]'''
-    n = rgb2NormRGB(rgb)
-    return normRGB2ModelSpace(n)
+    '''Converts the RGB Vector [0.0, 1.0] to Model space [0.0, 1.0]'''
+    return rgb
 
 def lab2ModelSpace(lab):
     return lab.yzx / 100.0
@@ -151,9 +144,9 @@ def createPoint(rgb):
         obj.data = sphere.data.copy()
         bpy.context.scene.collection.objects.link(obj)
     obj.location = rgb2ModelSpace(rgb)    
-    mat = makeMaterial('Mat', rgb / 255, (1, 1, 1), 1)
+    mat = makeMaterial('Mat', rgb, (1, 1, 1), 1)
     setMaterial(obj, mat)
-    obj.normRGB = rgb2NormRGB(rgb)
+    obj.normRGB = rgb
     
 def s2lin(s):
     a = 0.055
@@ -187,7 +180,7 @@ def animate():
     if scene.frame_end < ANIM_TOTAL_FRAMES:
         scene.frame_end = ANIM_TOTAL_FRAMES
     
-    # Select the RGB spheresf    
+    # Select the RGB spheres
     for obj in bpy.context.scene.objects:
         obj.select_set(obj.name.startswith(SPHERE_NAME))
     
@@ -196,7 +189,7 @@ def animate():
     for obj in bpy.context.selected_objects:
         sRGB = obj.normRGB
         linRGB = sRGB2linear(sRGB)
-        obj.location = normRGB2ModelSpace(linRGB)
+        obj.location = rgb2ModelSpace(linRGB)
         obj.keyframe_insert(data_path='location', index=-1)
 
     # XYZ        
@@ -256,43 +249,41 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
         scene = bpy.context.scene
         scene.frame_set(0)
         
-        steps = int(255 / (self.elements - 1))
+        step = 1 / (self.elements - 1)
+        print(step)
         
         # r/g/x face ("bottom" and "top")
-        for r in range(0, 256, steps):
-            for g in range(0, 256, steps):
+        for r in numpy.arange(0, 1 + DELTA, step):
+            for g in numpy.arange(0, 1 + DELTA, step):
                 rgb = Vector((r, g, 0))
                 createPoint(rgb)
-                rgb = Vector((r, g, 255))
+                rgb = Vector((r, g, 1))
                 createPoint(rgb)
         
         # r/x/b face ("front" and "back")
-        for r in range(0, 256, steps):
-            for b in range(0, 256, steps):
+        for r in numpy.arange(0, 1 + DELTA, step):
+            for b in numpy.arange(step, 1 - DELTA, step):
                 rgb = Vector((r, 0, b))
                 createPoint(rgb)
-                rgb = Vector((r, 255, b))
+                rgb = Vector((r, 1, b))
                 createPoint(rgb)
         
-        # x/g/b face ("left" and "right")
-        for g in range(0, 256, steps):
-            if g > 0 and g < 255:
-                for b in range(0, 256, steps):
-                    if b > 0 and b < 255:
-                        rgb = Vector((0, g, b))
-                        createPoint(rgb)
-                        rgb = Vector((255, g, b))
-                        createPoint(rgb)
+        # x/g/b face ("left" and "right")                 
+        for g in numpy.arange(step, 1 - DELTA, step):
+            for b in numpy.arange(step, 1 - DELTA, step):
+                rgb = Vector((0, g, b))
+                createPoint(rgb)
+                rgb = Vector((1, g, b))
+                createPoint(rgb)
         
         #  Store initial locations                
         for obj in bpy.context.selected_objects:
             obj.keyframe_insert(data_path='location', index=-1)
                         
         # Create RGB Cube "handle" ("Empty" object) - center of RGB cube
-        loc = normRGB2ModelSpace(Vector((0.5, 0.5, 0.5))) 
+        loc = rgb2ModelSpace(Vector((0.5, 0.5, 0.5))) 
         bpy.ops.object.empty_add(type='ARROWS', view_align=False, location=loc)
         # Creating a new object via "operations" makes the newly created object the selected one
-        # cube = scene.objects.active
         cube = bpy.context.object
         cube.name = CUBE_NAME
         
