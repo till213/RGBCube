@@ -16,8 +16,7 @@ from mathutils import Matrix
 import math
 
 # Constants
-DELTA = 10E-03
-SPHERE_NAME = "RGB_SPHERE"
+TEMPLATE_NAME = "RGB_ELEMENT"
 CUBE_NAME = "RGB_CUBE" 
 
 # Video Animation Constants
@@ -45,19 +44,15 @@ M = Matrix([[0.4124564, 0.3575761, 0.1804375],
             
 D65 = Vector((0.95047, 1.00, 1.08883))
 
-# http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
-EPS = 0.008856
-K = 903.3
+# Template element
+templateObject = None
 
-# Template sphere
-sphere = None
-
-def initSphere(radius):
-    global sphere
+def initTemplateObject(radius):
+    global templateObject
     bpy.ops.object.select_all(action='DESELECT')
     bpy.ops.surface.primitive_nurbs_surface_sphere_add(radius=radius)
-    sphere = bpy.context.object
-    sphere.name = SPHERE_NAME
+    templateObject = bpy.context.object
+    templateObject.name = TEMPLATE_NAME
     
 def makeMaterial(name, diffuse, specular, alpha):
     # TODO Convert to Nodes based material
@@ -74,26 +69,26 @@ def makeMaterial(name, diffuse, specular, alpha):
  
 def setMaterial(ob, mat):
     me = ob.data
-    # Remove the material from the template sphere
+    # Remove the material from the template object
     if len(me.materials) > 0:
         me.materials.pop() 
     me.materials.append(mat)
     
 
 def rgb2ModelSpace(rgb):
-    '''Converts the RGB Vector [0.0, 1.0] to Model space [0.0, 1.0]'''
+    """Converts the RGB Vector [0.0, 1.0] to Model space [0.0, 1.0]"""
     return rgb
 
 def lab2ModelSpace(lab):
     return lab.yzx / 100.0
 
 def linRGB2XYZ(rgb):
-    '''Converts linear RGB to XYZ by applying the Matrix M (D65 Illuminant)'''
+    """Converts linear RGB to XYZ by applying the Matrix M (D65 Illuminant)"""
     xyz = M @ rgb
     return xyz
 
 def XYZ2xyY(xyz):
-    '''Converts XYZ to xyY'''
+    """Converts XYZ to xyY"""
     xyY = Vector()
     
     # http://www.brucelindbloom.com/index.html?Eqn_XYZ_to_xyY.html
@@ -108,6 +103,10 @@ def XYZ2xyY(xyz):
     return xyY
 
 def f(x):
+    # http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+    EPS = 0.008856
+    K = 903.3
+
     if x > EPS:
         r = pow(x, 1.0 / 3.0)
     else:
@@ -146,12 +145,12 @@ def sRGB2linear(rgb):
     return lrgb
           
 def clearScene():
-    global sphere
+    global templateObject
     
     for obj in bpy.context.scene.objects:
-        obj.select_set(obj.name.startswith(SPHERE_NAME) or obj.name.startswith(CUBE_NAME))
+        obj.select_set(obj.name.startswith(TEMPLATE_NAME) or obj.name.startswith(CUBE_NAME))
     bpy.ops.object.delete()
-    sphere = None
+    templateObject = None
     
 def animate():
     scene = bpy.context.scene    
@@ -160,14 +159,14 @@ def animate():
     if scene.frame_end < ANIM_TOTAL_FRAMES:
         scene.frame_end = ANIM_TOTAL_FRAMES
     
-    # Select the RGB spheres
+    # Select the RGB elements
     for obj in bpy.context.scene.objects:
-        obj.select_set(obj.name.startswith(SPHERE_NAME))
+        obj.select_set(obj.name.startswith(TEMPLATE_NAME))
     
     # linear RGB
     scene.frame_set(ANIM_KEY_1_FRAME)
     for obj in bpy.context.selected_objects:
-        sRGB = obj.normRGB
+        sRGB = obj.normsRGB
         linRGB = sRGB2linear(sRGB)
         obj.location = rgb2ModelSpace(linRGB)
         obj.keyframe_insert(data_path='location', index=-1)
@@ -175,7 +174,7 @@ def animate():
     # XYZ        
     scene.frame_set(ANIM_KEY_2_FRAME)
     for obj in bpy.context.selected_objects:
-        sRGB = obj.normRGB
+        sRGB = obj.normsRGB
         linRGB = sRGB2linear(sRGB)
         obj.location = linRGB2XYZ(linRGB)
         obj.keyframe_insert(data_path='location', index=-1)
@@ -183,7 +182,7 @@ def animate():
     # xyY        
     scene.frame_set(ANIM_KEY_3_FRAME)
     for obj in bpy.context.selected_objects:
-        sRGB = obj.normRGB
+        sRGB = obj.normsRGB
         linRGB = sRGB2linear(sRGB)
         xyz = linRGB2XYZ(linRGB)
         obj.location = XYZ2xyY(xyz)
@@ -192,22 +191,22 @@ def animate():
     # L*a*b*, D65    
     scene.frame_set(ANIM_KEY_4_FRAME)
     for obj in bpy.context.selected_objects:
-        sRGB = obj.normRGB
+        sRGB = obj.normsRGB
         linRGB = sRGB2linear(sRGB)
         obj.location = lab2ModelSpace(rgb2Lab(linRGB))
         obj.keyframe_insert(data_path='location', index=-1)
         
-    # Reset to frame 1
+    # Set cursor back to frame 1
     scene.frame_set(ANIM_KEY_0_FRAME)
         
-def getNormRGBProperty(self):
-    return self["normRGB"]
+def getNormsRGBProperty(self):
+    return self["normsRGB"]
 
-def setNormRGBProperty(self, value):
-    self["normRGB"] = value
+def setNormsRGBProperty(self, value):
+    self["normsRGB"] = value
         
 def initProperties():
-    bpy.types.Object.normRGB = bpy.props.FloatVectorProperty(name="Normalised RGB", description="Original normalised RGB value in range [0.0, 1.0]", subtype="XYZ", size=3, get=getNormRGBProperty, set=setNormRGBProperty)
+    bpy.types.Object.normsRGB = bpy.props.FloatVectorProperty(name = "normsRGB", description = "Original normalised sRGB value in range [0.0, 1.0]", subtype = "XYZ", size = 3, get = getNormsRGBProperty, set = setNormsRGBProperty)
 
 class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
     """Object RGB Cube"""
@@ -215,68 +214,73 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
     bl_label = "Add RGB Cube"
     bl_options = {'REGISTER', 'UNDO'}
     bl_description = "Add RGB Cube"
-    
     radius: float
-    elements: bpy.props.IntProperty(name="Elements", default=8, min=2, max=256)
+    EPS = 10E-03
+    
+    # Properties
+    nofElements: bpy.props.IntProperty(name = "Number of elements", default = 8, min = 2, max = 256)
     
     def execute(self, context):
+        """Executes this add-on"""
         initProperties()
         clearScene()
         self.createScene()
         animate() 
         return {'FINISHED'}
     
-    def createPoint(self, rgb):
-        global sphere
+    def createPoint(self, sRGB):
+        """Creates an element of the original RGB cube at location sRGB"""
+        global templateObject
         obj = None
         
-        if sphere == None:
-            initSphere(self.radius)
-            obj = sphere
+        if templateObject == None:
+            initTemplateObject(self.radius)
+            obj = templateObject
         else:
-            obj = sphere.copy()
+            obj = templateObject.copy()
             # We also need to copy the vertex data, in order to
             # apply different materials later on
-            obj.data = sphere.data.copy()
+            obj.data = templateObject.data.copy()
             bpy.context.scene.collection.objects.link(obj)
-        obj.location = rgb2ModelSpace(rgb)    
-        mat = makeMaterial('Mat', rgb, (1, 1, 1), 1)
+        obj.location = rgb2ModelSpace(sRGB)    
+        mat = makeMaterial('Mat', sRGB, (1, 1, 1), 1)
         setMaterial(obj, mat)
-        obj.normRGB = rgb
+        obj.normsRGB = sRGB
     
     def createScene(self):
+        """Creates the initial RGB cube"""
         scene = bpy.context.scene
-        scene.frame_set(0)
+        scene.frame_set(ANIM_KEY_0_FRAME)
         
-        step = 1 / (self.elements - 1)
+        step = 1 / (self.nofElements - 1)
         self.radius = step / 2
         
         # r/g/x face ("bottom" and "top")
-        for r in numpy.arange(0, 1 + DELTA, step):
-            for g in numpy.arange(0, 1 + DELTA, step):
-                rgb = Vector((r, g, 0))
-                self.createPoint(rgb)
-                rgb = Vector((r, g, 1))
-                self.createPoint(rgb)
+        for r in numpy.arange(0, 1 + self.EPS, step):
+            for g in numpy.arange(0, 1 + self.EPS, step):
+                sRGB = Vector((r, g, 0))
+                self.createPoint(sRGB)
+                sRGB = Vector((r, g, 1))
+                self.createPoint(sRGB)
         
         # r/x/b face ("front" and "back")
-        for r in numpy.arange(0, 1 + DELTA, step):
-            for b in numpy.arange(step, 1 - DELTA, step):
-                rgb = Vector((r, 0, b))
-                self.createPoint(rgb)
-                rgb = Vector((r, 1, b))
-                self.createPoint(rgb)
+        for r in numpy.arange(0, 1 + self.EPS, step):
+            for b in numpy.arange(step, 1 - self.EPS, step):
+                sRGB = Vector((r, 0, b))
+                self.createPoint(sRGB)
+                sRGB = Vector((r, 1, b))
+                self.createPoint(sRGB)
         
         # x/g/b face ("left" and "right")                 
-        for g in numpy.arange(step, 1 - DELTA, step):
-            for b in numpy.arange(step, 1 - DELTA, step):
-                rgb = Vector((0, g, b))
-                self.createPoint(rgb)
-                rgb = Vector((1, g, b))
-                self.createPoint(rgb)
+        for g in numpy.arange(step, 1 - self.EPS, step):
+            for b in numpy.arange(step, 1 - self.EPS, step):
+                sRGB = Vector((0, g, b))
+                self.createPoint(sRGB)
+                sRGB = Vector((1, g, b))
+                self.createPoint(sRGB)
                 
         for obj in bpy.context.scene.objects:
-            obj.select_set(obj.name.startswith(SPHERE_NAME))
+            obj.select_set(obj.name.startswith(TEMPLATE_NAME))
         
         #  Store initial locations  
         scene.frame_set(ANIM_KEY_0_FRAME)              
@@ -285,7 +289,7 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
                         
         # Create RGB Cube "handle" ("Empty" object) - center of RGB cube
         loc = rgb2ModelSpace(Vector((0.5, 0.5, 0.5))) 
-        bpy.ops.object.empty_add(type='ARROWS', view_align=False, location=loc)
+        bpy.ops.object.empty_add(type = 'ARROWS', view_align = False, location = loc)
         # Creating a new object via "operations" makes the newly created object the selected one
         cube = bpy.context.object
         cube.name = CUBE_NAME
@@ -295,12 +299,12 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
         
         # Then select all RGB spheres first...
         for obj in bpy.context.scene.objects:
-            obj.select_set(obj.name.startswith(SPHERE_NAME))
+            obj.select_set(obj.name.startswith(TEMPLATE_NAME))
             
         # ... then the "handle" (parent) again (last)
         cube.select_set(True)
         
-        bpy.ops.object.parent_set(type='OBJECT', keep_transform=True)
+        bpy.ops.object.parent_set(type = 'OBJECT', keep_transform = True)
                 
         # Update objects in scene        
         scene.update()
@@ -308,8 +312,8 @@ class OBJECT_OT_add_rgb_cube(bpy.types.Operator):
 def menu_func_rgb_cube(self, context):
     self.layout.operator(
         OBJECT_OT_add_rgb_cube.bl_idname,
-        text="RGB Cube",
-        icon="CUBE")
+        text = "RGB Cube",
+        icon = "CUBE")
 
 def register():
     bpy.utils.register_class(OBJECT_OT_add_rgb_cube)
